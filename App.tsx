@@ -1,141 +1,91 @@
-import React, {useState, useCallback, useEffect} from 'react';
-import {BackHandler, View, ActivityIndicator, StyleSheet} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StyleSheet, ActivityIndicator, View } from 'react-native';
+
+import SplashScreen from './screens/auth/SplashScreen';
 import LoginScreen from './screens/auth/LoginScreen';
 import SignupScreen from './screens/auth/SignupScreen';
 import ForgotPasswordScreen from './screens/auth/ForgotPasswordScreen';
 import VerifyOtpScreen from './screens/auth/VerifyOtpScreen';
 import ResetPasswordScreen from './screens/auth/ResetPasswordScreen';
-import ComingSoonScreen from './screens/ComingSoonScreen';
-import {TokenStore} from './api/client';
 
-type Screen =
-  | 'login'
-  | 'signup'
-  | 'forgotPassword'
-  | 'verifyOtp'
-  | 'resetPassword'
-  | 'comingSoon';
+import OnboardingNavigator from './navigation/OnboardingNavigator';
+import MainTabNavigator from './navigation/MainTabNavigator';
+import { GymProvider, useGym } from './context/GymContext';
+import { TokenStore } from './api/client';
+import type { AuthStackParamList } from './navigation/types';
 
-type HistoryEntry = {
-  screen: Screen;
-  params: Record<string, string>;
-};
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
-const App = () => {
-  const [history, setHistory] = useState<HistoryEntry[]>([
-    {screen: 'login', params: {}},
-  ]);
-  const [bootstrapping, setBootstrapping] = useState(true);
+const AuthNavigator = () => (
+  <AuthStack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+    <AuthStack.Screen name="Splash" component={SplashScreen} />
+    <AuthStack.Screen name="Login" component={LoginScreen} />
+    <AuthStack.Screen name="Signup" component={SignupScreen} />
+    <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    <AuthStack.Screen name="VerifyOtp" component={VerifyOtpScreen} />
+    <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+  </AuthStack.Navigator>
+);
 
-  // On launch, check if a refresh token exists — if so, skip to comingSoon
-  useEffect(() => {
-    TokenStore.getRefresh().then(token => {
-      if (token) {
-        setHistory([{screen: 'comingSoon', params: {}}]);
-      }
-      setBootstrapping(false);
-    });
-  }, []);
+type AppRoute = 'loading' | 'auth' | 'onboarding' | 'main';
 
-  const current = history[history.length - 1];
-  const {screen: currentScreen, params: navParams} = current;
-
-  const navigate = useCallback(
-    (screen: Screen, params?: Record<string, string>) => {
-      setHistory(h => [...h, {screen, params: params ?? {}}]);
-    },
-    [],
-  );
-
-  const goBack = useCallback(() => {
-    setHistory(h => (h.length > 1 ? h.slice(0, -1) : h));
-  }, []);
+const AppRouter = () => {
+  const [route, setRoute] = useState<AppRoute>('loading');
+  const { gym, refresh } = useGym();
 
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (currentScreen === 'comingSoon') return true;
-      if (history.length > 1) {
-        goBack();
-        return true;
+    const bootstrap = async () => {
+      const token = await TokenStore.getAccess();
+      if (!token) {
+        setRoute('auth');
+        return;
       }
-      return false;
-    });
-    return () => sub.remove();
-  }, [history, goBack, currentScreen]);
+      try {
+        await refresh();
+        // gym state is set by refresh — handled below
+      } catch {
+        setRoute('auth');
+      }
+    };
+    bootstrap();
+  }, []);
 
-  if (bootstrapping) {
+  // Once gym context resolves, pick the right route
+  useEffect(() => {
+    if (route === 'loading') return;
+    if (route === 'auth') return;
+    setRoute(gym ? 'main' : 'onboarding');
+  }, [gym]);
+
+  if (route === 'loading') {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+        <ActivityIndicator color="#FFFFFF" size="large" />
       </View>
     );
   }
 
-  if (currentScreen === 'comingSoon') {
-    return <ComingSoonScreen />;
-  }
-
-  if (currentScreen === 'signup') {
-    return (
-      <SignupScreen
-        onNavigate={(screen, params) => navigate(screen, params)}
-      />
-    );
-  }
-
-  if (currentScreen === 'forgotPassword') {
-    return (
-      <ForgotPasswordScreen
-        onNavigate={(screen, params) => navigate(screen, params)}
-      />
-    );
-  }
-
-  if (currentScreen === 'verifyOtp') {
-    const flow = (navParams.flow as 'signup' | 'forgotPassword') ?? 'signup';
-    return (
-      <VerifyOtpScreen
-        email={navParams.email}
-        flow={flow}
-        onBack={goBack}
-        onVerified={data => {
-          if (flow === 'forgotPassword') {
-            navigate('resetPassword', {
-              email: navParams.email,
-              resetToken: data?.reset_token ?? '',
-            });
-          } else {
-            navigate('comingSoon');
-          }
-        }}
-      />
-    );
-  }
-
-  if (currentScreen === 'resetPassword') {
-    return (
-      <ResetPasswordScreen
-        email={navParams.email}
-        resetToken={navParams.resetToken}
-        onNavigate={screen => navigate(screen)}
-      />
-    );
-  }
-
-  return (
-    <LoginScreen
-      onNavigate={(screen, params) => navigate(screen as any, params)}
-    />
-  );
+  if (route === 'auth') return <AuthNavigator />;
+  if (route === 'onboarding') return <OnboardingNavigator />;
+  return <MainTabNavigator />;
 };
 
-const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    backgroundColor: '#0D1A2D',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
+const App = () => (
+  <GestureHandlerRootView style={styles.root}>
+    <GymProvider>
+      <NavigationContainer>
+        <AppRouter />
+      </NavigationContainer>
+    </GymProvider>
+  </GestureHandlerRootView>
+);
 
 export default App;
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#0D1A2D' },
+  loader: { flex: 1, backgroundColor: '#0D1A2D', alignItems: 'center', justifyContent: 'center' },
+});

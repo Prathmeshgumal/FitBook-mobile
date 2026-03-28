@@ -12,19 +12,17 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { login } from '../../api/auth';
+import { useGym } from '../../context/GymContext';
+import type { LoginScreenProps } from '../../navigation/types';
 
-type Props = {
-  onNavigate: (
-    screen: 'signup' | 'comingSoon' | 'forgotPassword',
-    params?: Record<string, string>,
-  ) => void;
-};
-
-const LoginScreen = ({ onNavigate }: Props) => {
+const LoginScreen = ({ navigation }: LoginScreenProps) => {
+  const { refresh } = useGym();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [focused, setFocused] = useState<'email' | 'password' | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +53,7 @@ const LoginScreen = ({ onNavigate }: Props) => {
     setLoading(true);
     try {
       await login(email, password);
-      onNavigate('comingSoon');
+      await refresh(); // GymContext.refresh() → App.tsx reroutes to onboarding or main
     } catch (err: any) {
       setError(err.message ?? 'Login failed. Please try again.');
     } finally {
@@ -106,24 +104,37 @@ const LoginScreen = ({ onNavigate }: Props) => {
 
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  focused === 'password' && styles.inputFocused,
-                ]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••"
-                placeholderTextColor={PLACEHOLDER}
-                secureTextEntry
-                onFocus={() => setFocused('password')}
-                onBlur={() => setFocused(null)}
-              />
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.inputFlex,
+                    focused === 'password' && styles.inputFocused,
+                  ]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••"
+                  placeholderTextColor={PLACEHOLDER}
+                  secureTextEntry={!showPassword}
+                  onFocus={() => setFocused('password')}
+                  onBlur={() => setFocused(null)}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(v => !v)}
+                  style={styles.eyeBtn}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#8890A8"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
               style={styles.forgotWrap}
-              onPress={() => onNavigate('forgotPassword')}
+              onPress={() => navigation.navigate('ForgotPassword')}
             >
               <Text style={styles.forgot}>Forget password?</Text>
             </TouchableOpacity>
@@ -149,7 +160,7 @@ const LoginScreen = ({ onNavigate }: Props) => {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerSub}>Dont have an account?</Text>
-        <TouchableOpacity onPress={() => onNavigate('signup')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
           <Text style={styles.footerLink}> Sign Up</Text>
         </TouchableOpacity>
       </View>
@@ -215,6 +226,14 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   inputFocused: { borderBottomColor: BG },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: DIVIDER,
+  },
+  inputFlex: { flex: 1, borderBottomWidth: 0 },
+  eyeBtn: { paddingBottom: 8, paddingLeft: 8 },
 
   forgotWrap: { alignSelf: 'flex-end', marginBottom: 12 },
   forgot: { fontSize: 13, color: FOOTER_SUB },

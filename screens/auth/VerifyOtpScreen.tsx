@@ -17,18 +17,15 @@ import {
   verifyForgotPasswordOtp,
   requestForgotPasswordOtp,
 } from '../../api/auth';
-
-type Props = {
-  email?: string;
-  flow: 'signup' | 'forgotPassword';
-  onBack: () => void;
-  onVerified: (data?: { reset_token?: string }) => void;
-};
+import { useGym } from '../../context/GymContext';
+import type { VerifyOtpScreenProps } from '../../navigation/types';
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 30;
 
-const VerifyOtpScreen = ({ email, flow, onBack, onVerified }: Props) => {
+const VerifyOtpScreen = ({ navigation, route }: VerifyOtpScreenProps) => {
+  const { email, flow } = route.params;
+  const { refresh } = useGym();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -90,10 +87,13 @@ const VerifyOtpScreen = ({ email, flow, onBack, onVerified }: Props) => {
     try {
       if (flow === 'signup') {
         await verifySignupEmail(email, code);
-        onVerified();
+        await refresh(); // triggers App.tsx to route to onboarding or main
       } else {
         const { reset_token } = await verifyForgotPasswordOtp(email, code);
-        onVerified({ reset_token });
+        navigation.replace('ResetPassword', {
+          email,
+          resetToken: reset_token,
+        });
       }
     } catch (err: any) {
       setError(err.message ?? 'Incorrect code. Please try again.');
@@ -210,7 +210,7 @@ const VerifyOtpScreen = ({ email, flow, onBack, onVerified }: Props) => {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerSub}>Wrong email?</Text>
-        <TouchableOpacity onPress={onBack}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.footerLink}> Go back</Text>
         </TouchableOpacity>
       </View>
