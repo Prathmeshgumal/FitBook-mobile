@@ -44,9 +44,9 @@ async function rawPost<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail ?? 'Request failed');
-  return data as T;
+  const envelope = await res.json();
+  if (!res.ok) throw new Error(envelope.error ?? 'Request failed');
+  return envelope.data as T;
 }
 
 // ── Authenticated fetch with auto-refresh ──────────────────
@@ -89,9 +89,9 @@ export async function authFetch<T>(
     }
   }
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail ?? 'Request failed');
-  return data as T;
+  const envelope = await res.json();
+  if (!res.ok) throw new Error(envelope.error ?? 'Request failed');
+  return envelope.data as T;
 }
 
 export { rawPost };

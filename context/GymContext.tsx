@@ -5,35 +5,41 @@ import { getMyGym } from '../api/gyms';
 interface GymContextValue {
   gym: Gym | null;
   loading: boolean;
-  refresh: () => Promise<void>;
+  refreshCount: number;
+  refresh: () => Promise<Gym | null>;
   setGym: (gym: Gym | null) => void;
 }
 
 const GymContext = createContext<GymContextValue>({
   gym: null,
   loading: false,
-  refresh: async () => {},
+  refreshCount: 0,
+  refresh: async () => null,
   setGym: () => {},
 });
 
 export const GymProvider = ({ children }: { children: React.ReactNode }) => {
   const [gym, setGym] = useState<Gym | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshCount, setRefreshCount] = useState(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<Gym | null> => {
     setLoading(true);
     try {
       const data = await getMyGym();
       setGym(data);
+      return data;
     } catch {
       setGym(null);
+      return null;
     } finally {
+      setRefreshCount(c => c + 1);
       setLoading(false);
     }
   }, []);
 
   return (
-    <GymContext.Provider value={{ gym, loading, refresh, setGym }}>
+    <GymContext.Provider value={{ gym, loading, refreshCount, refresh, setGym }}>
       {children}
     </GymContext.Provider>
   );

@@ -1,8 +1,8 @@
 import { authFetch } from './client';
 
 export interface Gym {
-  id: number;
-  owner_id: number;
+  id: string;
+  owner_id: string;
   name: string;
   gym_type: string;
   phone: string;
@@ -17,8 +17,8 @@ export interface Gym {
 }
 
 export interface Plan {
-  id: number;
-  gym_id: number;
+  id: string;
+  gym_id: string;
   name: string;
   price: string;
   duration_value: number;
@@ -28,8 +28,8 @@ export interface Plan {
 }
 
 export interface Batch {
-  id: number;
-  gym_id: number;
+  id: string;
+  gym_id: string;
   name: string;
   start_time: string;
   end_time: string;
@@ -56,53 +56,74 @@ export async function getMyGym(): Promise<Gym | null> {
   return authFetch('/gyms/mine');
 }
 
-export async function updateGym(gymId: number, payload: Partial<{
-  name: string;
-  gym_type: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  opening_hours: string;
-  logo_url: string;
-  payment_methods: { enabled: boolean; options: string[] };
-}>): Promise<Gym> {
-  return authFetch(`/gyms/${gymId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+export async function updateGym(
+  gymId: string,
+  payload: Partial<{
+    name: string;
+    gym_type: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    opening_hours: string;
+    logo_url: string;
+    payment_methods: { enabled: boolean; options: string[] };
+  }>,
+): Promise<Gym> {
+  return authFetch(`/gyms/${gymId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 // ── Plans ─────────────────────────────────────────────────────
 
-export async function listPlans(gymId: number): Promise<Plan[]> {
+export async function listPlans(gymId: string): Promise<Plan[]> {
   return authFetch(`/gyms/${gymId}/plans`);
 }
 
-export async function createPlan(gymId: number, payload: {
-  name: string;
-  price: number;
-  duration_value: number;
-  duration_unit: 'months' | 'days';
-}): Promise<Plan> {
-  return authFetch(`/gyms/${gymId}/plans`, { method: 'POST', body: JSON.stringify(payload) });
+export async function createPlan(
+  gymId: string,
+  payload: {
+    name: string;
+    price: number;
+    duration_value: number;
+    duration_unit: 'months' | 'days';
+  },
+): Promise<Plan> {
+  return authFetch(`/gyms/${gymId}/plans`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
-export async function deletePlan(gymId: number, planId: number): Promise<void> {
+export async function deletePlan(gymId: string, planId: string): Promise<void> {
   return authFetch(`/gyms/${gymId}/plans/${planId}`, { method: 'DELETE' });
 }
 
 // ── Batches ───────────────────────────────────────────────────
 
-export async function listBatches(gymId: number): Promise<Batch[]> {
+export async function listBatches(gymId: string): Promise<Batch[]> {
   return authFetch(`/gyms/${gymId}/batches`);
 }
 
-export async function createBatch(gymId: number, payload: {
-  name: string;
-  start_time: string;
-  end_time: string;
-}): Promise<Batch> {
-  return authFetch(`/gyms/${gymId}/batches`, { method: 'POST', body: JSON.stringify(payload) });
+export async function createBatch(
+  gymId: string,
+  payload: {
+    name: string;
+    start_time: string;
+    end_time: string;
+  },
+): Promise<Batch> {
+  return authFetch(`/gyms/${gymId}/batches`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
-export async function deleteBatch(gymId: number, batchId: number): Promise<void> {
+export async function deleteBatch(
+  gymId: string,
+  batchId: string,
+): Promise<void> {
   return authFetch(`/gyms/${gymId}/batches/${batchId}`, { method: 'DELETE' });
 }

@@ -12,16 +12,11 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { requestOnboarderOtp, register } from '../../api/auth';
+import type { SignupScreenProps } from '../../navigation/types';
 
-type Props = {
-  onNavigate: (
-    screen: 'login' | 'verifyOtp',
-    params?: Record<string, string>,
-  ) => void;
-};
-
-const SignupScreen = ({ onNavigate }: Props) => {
+const SignupScreen = ({ navigation }: SignupScreenProps) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -31,6 +26,8 @@ const SignupScreen = ({ onNavigate }: Props) => {
   const [focused, setFocused] = useState<
     'name' | 'phone' | 'email' | 'password' | 'confirm' | 'onboarderOtp' | null
   >(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [requestingOtp, setRequestingOtp] = useState(false);
@@ -84,8 +81,8 @@ const SignupScreen = ({ onNavigate }: Props) => {
       setError('All fields are required.');
       return;
     }
-    if (!/^\d{10,15}$/.test(phone)) {
-      setError('Enter a valid phone number (10–15 digits).');
+    if (!/^\d{10}$/.test(phone)) {
+      setError('Enter a valid 10-digit phone number.');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,7 +108,7 @@ const SignupScreen = ({ onNavigate }: Props) => {
         password,
         onboarder_otp: onboarderOtp,
       });
-      onNavigate('verifyOtp', { email, flow: 'signup' });
+      navigation.navigate('VerifyOtp', { email, flow: 'signup' });
     } catch (err: any) {
       setError(err.message ?? 'Registration failed. Please try again.');
     } finally {
@@ -167,11 +164,11 @@ const SignupScreen = ({ onNavigate }: Props) => {
                   focused === 'phone' && styles.inputFocused,
                 ]}
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={t => setPhone(t.replace(/\D/g, ''))}
                 placeholder="9876543210"
                 placeholderTextColor={PLACEHOLDER}
                 keyboardType="phone-pad"
-                maxLength={15}
+                maxLength={10}
                 onFocus={() => setFocused('phone')}
                 onBlur={() => setFocused(null)}
               />
@@ -197,36 +194,64 @@ const SignupScreen = ({ onNavigate }: Props) => {
 
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  focused === 'password' && styles.inputFocused,
-                ]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••"
-                placeholderTextColor={PLACEHOLDER}
-                secureTextEntry
-                onFocus={() => setFocused('password')}
-                onBlur={() => setFocused(null)}
-              />
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.inputFlex,
+                    focused === 'password' && styles.inputFocused,
+                  ]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••"
+                  placeholderTextColor={PLACEHOLDER}
+                  secureTextEntry={!showPassword}
+                  onFocus={() => setFocused('password')}
+                  onBlur={() => setFocused(null)}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(v => !v)}
+                  style={styles.eyeBtn}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#8890A8"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  focused === 'confirm' && styles.inputFocused,
-                ]}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="••••••"
-                placeholderTextColor={PLACEHOLDER}
-                secureTextEntry
-                onFocus={() => setFocused('confirm')}
-                onBlur={() => setFocused(null)}
-              />
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.inputFlex,
+                    focused === 'confirm' && styles.inputFocused,
+                  ]}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="••••••"
+                  placeholderTextColor={PLACEHOLDER}
+                  secureTextEntry={!showConfirmPassword}
+                  onFocus={() => setFocused('confirm')}
+                  onBlur={() => setFocused(null)}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(v => !v)}
+                  style={styles.eyeBtn}
+                >
+                  <Ionicons
+                    name={
+                      showConfirmPassword ? 'eye-off-outline' : 'eye-outline'
+                    }
+                    size={20}
+                    color="#8890A8"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.fieldWrap}>
@@ -260,7 +285,9 @@ const SignupScreen = ({ onNavigate }: Props) => {
                 onBlur={() => setFocused(null)}
               />
               {otpRequested && (
-                <Text style={styles.otpHint}>Code sent to admin. Ask your onboarder for it.</Text>
+                <Text style={styles.otpHint}>
+                  Code sent to admin. Ask your onboarder for it.
+                </Text>
               )}
             </View>
 
@@ -285,7 +312,7 @@ const SignupScreen = ({ onNavigate }: Props) => {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerSub}>Already Sign Up?</Text>
-        <TouchableOpacity onPress={() => onNavigate('login')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <Text style={styles.footerLink}> Sign In</Text>
         </TouchableOpacity>
       </View>
@@ -360,6 +387,14 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   inputFocused: { borderBottomColor: BG },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: DIVIDER,
+  },
+  inputFlex: { flex: 1, borderBottomWidth: 0 },
+  eyeBtn: { paddingBottom: 8, paddingLeft: 8 },
 
   errorText: {
     fontSize: 13,

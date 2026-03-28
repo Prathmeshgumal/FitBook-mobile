@@ -12,12 +12,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { requestForgotPasswordOtp } from '../../api/auth';
+import type { ForgotPasswordScreenProps } from '../../navigation/types';
 
-type Props = {
-  onNavigate: (screen: 'login' | 'verifyOtp', params?: Record<string, string>) => void;
-};
-
-const ForgotPasswordScreen = ({ onNavigate }: Props) => {
+const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
   const [email, setEmail] = useState('');
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState('');
@@ -28,8 +25,16 @@ const ForgotPasswordScreen = ({ onNavigate }: Props) => {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(cardAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(cardAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
@@ -47,7 +52,7 @@ const ForgotPasswordScreen = ({ onNavigate }: Props) => {
     setLoading(true);
     try {
       await requestForgotPasswordOtp(email);
-      onNavigate('verifyOtp', { email, flow: 'forgotPassword' });
+      navigation.replace('VerifyOtp', { email, flow: 'forgotPassword' });
     } catch (err: any) {
       setError(err.message ?? 'Failed to send code. Please try again.');
     } finally {
@@ -62,13 +67,19 @@ const ForgotPasswordScreen = ({ onNavigate }: Props) => {
       <Animated.View style={[styles.topSection, { opacity: fadeAnim }]}>
         <Text style={styles.topTitle}>Forgot</Text>
         <Text style={styles.topTitle}>Password?</Text>
-        <Text style={styles.topSub}>Enter your email to receive a reset code.</Text>
+        <Text style={styles.topSub}>
+          Enter your email to receive a reset code.
+        </Text>
       </Animated.View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
-        <Animated.View style={[styles.card, { transform: [{ translateY: cardAnim }] }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
+      >
+        <Animated.View
+          style={[styles.card, { transform: [{ translateY: cardAnim }] }]}
+        >
           <View style={styles.cardContent}>
-
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Email</Text>
               <TextInput
@@ -98,14 +109,13 @@ const ForgotPasswordScreen = ({ onNavigate }: Props) => {
                 <Text style={styles.btnText}>SEND CODE</Text>
               )}
             </TouchableOpacity>
-
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
 
       <View style={styles.footer}>
         <Text style={styles.footerSub}>Remember your password?</Text>
-        <TouchableOpacity onPress={() => onNavigate('login')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <Text style={styles.footerLink}> Sign In</Text>
         </TouchableOpacity>
       </View>
@@ -130,7 +140,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingBottom: 36,
   },
-  topTitle: { fontSize: 38, fontWeight: '800', color: '#FFFFFF', lineHeight: 46 },
+  topTitle: {
+    fontSize: 38,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 46,
+  },
   topSub: { fontSize: 14, color: '#8890A8', marginTop: 12 },
 
   card: {
@@ -157,7 +172,12 @@ const styles = StyleSheet.create({
   },
   inputFocused: { borderBottomColor: BG },
 
-  errorText: { fontSize: 13, color: '#E53935', textAlign: 'center', marginBottom: 12 },
+  errorText: {
+    fontSize: 13,
+    color: '#E53935',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
 
   btn: {
     backgroundColor: BG,
@@ -168,7 +188,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', letterSpacing: 1.5 },
+  btnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
 
   footer: {
     backgroundColor: CARD,

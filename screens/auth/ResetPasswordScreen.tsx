@@ -13,18 +13,20 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { resetPassword } from '../../api/auth';
+import type { ResetPasswordScreenProps } from '../../navigation/types';
 
-type Props = {
-  email?: string;
-  resetToken?: string;
-  onNavigate: (screen: 'login') => void;
-};
-
-const ResetPasswordScreen = ({ email, resetToken, onNavigate }: Props) => {
+const ResetPasswordScreen = ({
+  navigation,
+  route,
+}: ResetPasswordScreenProps) => {
+  const { resetToken } = route.params;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [focused, setFocused] = useState<'password' | 'confirm' | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -33,8 +35,16 @@ const ResetPasswordScreen = ({ email, resetToken, onNavigate }: Props) => {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(cardAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(cardAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
@@ -60,7 +70,7 @@ const ResetPasswordScreen = ({ email, resetToken, onNavigate }: Props) => {
     try {
       await resetPassword(resetToken, password);
       Alert.alert('Success', 'Your password has been reset. Please sign in.', [
-        { text: 'Sign In', onPress: () => onNavigate('login') },
+        { text: 'Sign In', onPress: () => navigation.replace('Login') },
       ]);
     } catch (err: any) {
       setError(err.message ?? 'Failed to reset password. Please try again.');
@@ -79,39 +89,78 @@ const ResetPasswordScreen = ({ email, resetToken, onNavigate }: Props) => {
         <Text style={styles.topSub}>Enter your new password below.</Text>
       </Animated.View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
-        <Animated.View style={[styles.card, { transform: [{ translateY: cardAnim }] }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
+      >
+        <Animated.View
+          style={[styles.card, { transform: [{ translateY: cardAnim }] }]}
+        >
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.cardScroll}>
-
+            contentContainerStyle={styles.cardScroll}
+          >
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>New Password</Text>
-              <TextInput
-                style={[styles.input, focused === 'password' && styles.inputFocused]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••"
-                placeholderTextColor={PLACEHOLDER}
-                secureTextEntry
-                onFocus={() => setFocused('password')}
-                onBlur={() => setFocused(null)}
-              />
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.inputFlex,
+                    focused === 'password' && styles.inputFocused,
+                  ]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••"
+                  placeholderTextColor={PLACEHOLDER}
+                  secureTextEntry={!showPassword}
+                  onFocus={() => setFocused('password')}
+                  onBlur={() => setFocused(null)}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(v => !v)}
+                  style={styles.eyeBtn}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#8890A8"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Confirm New Password</Text>
-              <TextInput
-                style={[styles.input, focused === 'confirm' && styles.inputFocused]}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="••••••"
-                placeholderTextColor={PLACEHOLDER}
-                secureTextEntry
-                onFocus={() => setFocused('confirm')}
-                onBlur={() => setFocused(null)}
-              />
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.inputFlex,
+                    focused === 'confirm' && styles.inputFocused,
+                  ]}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="••••••"
+                  placeholderTextColor={PLACEHOLDER}
+                  secureTextEntry={!showConfirmPassword}
+                  onFocus={() => setFocused('confirm')}
+                  onBlur={() => setFocused(null)}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(v => !v)}
+                  style={styles.eyeBtn}
+                >
+                  <Ionicons
+                    name={
+                      showConfirmPassword ? 'eye-off-outline' : 'eye-outline'
+                    }
+                    size={20}
+                    color="#8890A8"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -128,14 +177,13 @@ const ResetPasswordScreen = ({ email, resetToken, onNavigate }: Props) => {
                 <Text style={styles.btnText}>RESET PASSWORD</Text>
               )}
             </TouchableOpacity>
-
           </ScrollView>
         </Animated.View>
       </KeyboardAvoidingView>
 
       <View style={styles.footer}>
         <Text style={styles.footerSub}>Remember your password?</Text>
-        <TouchableOpacity onPress={() => onNavigate('login')}>
+        <TouchableOpacity onPress={() => navigation.replace('Login')}>
           <Text style={styles.footerLink}> Sign In</Text>
         </TouchableOpacity>
       </View>
@@ -160,7 +208,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingBottom: 36,
   },
-  topTitle: { fontSize: 38, fontWeight: '800', color: '#FFFFFF', lineHeight: 46 },
+  topTitle: {
+    fontSize: 38,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 46,
+  },
   topSub: { fontSize: 14, color: '#8890A8', marginTop: 12 },
 
   card: {
@@ -186,8 +239,21 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   inputFocused: { borderBottomColor: BG },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: DIVIDER,
+  },
+  inputFlex: { flex: 1, borderBottomWidth: 0 },
+  eyeBtn: { paddingBottom: 8, paddingLeft: 8 },
 
-  errorText: { fontSize: 13, color: '#E53935', textAlign: 'center', marginBottom: 12 },
+  errorText: {
+    fontSize: 13,
+    color: '#E53935',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
 
   btn: {
     backgroundColor: BG,
@@ -198,7 +264,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', letterSpacing: 1.5 },
+  btnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
 
   footer: {
     backgroundColor: CARD,

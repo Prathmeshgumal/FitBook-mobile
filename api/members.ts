@@ -1,8 +1,8 @@
 import { authFetch } from './client';
 
 export interface Member {
-  id: number;
-  gym_id: number;
+  id: string;
+  gym_id: string;
   membership_id: string;
   full_name: string;
   gender: 'male' | 'female' | 'other' | null;
@@ -22,8 +22,8 @@ export interface Member {
 }
 
 export interface Payment {
-  id: number;
-  membership_id: number;
+  id: string;
+  membership_id: string;
   amount: string;
   payment_date: string;
   payment_method: string | null;
@@ -31,10 +31,10 @@ export interface Payment {
 }
 
 export interface Membership {
-  id: number;
-  member_id: number;
-  plan_id: number;
-  batch_id: number | null;
+  id: string;
+  member_id: string;
+  plan_id: string;
+  batch_id: string | null;
   purchase_date: string;
   expiry_date: string;
   full_amount: string;
@@ -54,28 +54,28 @@ export interface MemberDetail extends Member {
 
 // ── Members ───────────────────────────────────────────────────
 
-export async function listMembers(gymId: number, params?: {
+export async function listMembers(gymId: string, params?: {
   search?: string;
   gender?: string;
-  plan_id?: number;
+  plan_id?: string;
   sort?: 'newest' | 'oldest';
 }): Promise<Member[]> {
   const query = new URLSearchParams();
   if (params?.search) query.set('search', params.search);
   if (params?.gender) query.set('gender', params.gender);
-  if (params?.plan_id) query.set('plan_id', String(params.plan_id));
+  if (params?.plan_id) query.set('plan_id', params.plan_id);
   if (params?.sort) query.set('sort', params.sort);
   const qs = query.toString();
   return authFetch(`/gyms/${gymId}/members${qs ? `?${qs}` : ''}`);
 }
 
-export async function createMember(gymId: number, payload: {
+export async function createMember(gymId: string, payload: {
   full_name: string;
   gender?: string;
   phone: string;
   membership_id?: string;
-  plan_id: number;
-  batch_id?: number;
+  plan_id: string;
+  batch_id?: string;
   purchase_date: string;
   paid_amount?: number;
   payment_method?: string;
@@ -86,11 +86,11 @@ export async function createMember(gymId: number, payload: {
   return authFetch(`/gyms/${gymId}/members`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
-export async function getMemberDetail(memberId: number): Promise<MemberDetail> {
+export async function getMemberDetail(memberId: string): Promise<MemberDetail> {
   return authFetch(`/members/${memberId}`);
 }
 
-export async function updateMember(memberId: number, payload: Partial<{
+export async function updateMember(memberId: string, payload: Partial<{
   full_name: string;
   gender: string;
   phone: string;
@@ -103,15 +103,15 @@ export async function updateMember(memberId: number, payload: Partial<{
   return authFetch(`/members/${memberId}`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
-export async function deleteMember(memberId: number): Promise<void> {
+export async function deleteMember(memberId: string): Promise<void> {
   return authFetch(`/members/${memberId}`, { method: 'DELETE' });
 }
 
 // ── Memberships ───────────────────────────────────────────────
 
-export async function renewMembership(memberId: number, payload: {
-  plan_id: number;
-  batch_id?: number;
+export async function renewMembership(memberId: string, payload: {
+  plan_id: string;
+  batch_id?: string;
   purchase_date: string;
   paid_amount?: number;
   payment_method?: string;
@@ -124,8 +124,8 @@ export async function renewMembership(memberId: number, payload: {
 
 // ── Payments ──────────────────────────────────────────────────
 
-export async function addPayment(memberId: number, payload: {
-  membership_id: number;
+export async function addPayment(memberId: string, payload: {
+  membership_id: string;
   amount: number;
   payment_date: string;
   payment_method?: string;
@@ -133,6 +133,6 @@ export async function addPayment(memberId: number, payload: {
   return authFetch(`/members/${memberId}/payments`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
-export async function deletePayment(memberId: number, paymentId: number): Promise<void> {
+export async function deletePayment(memberId: string, paymentId: string): Promise<void> {
   return authFetch(`/members/${memberId}/payments/${paymentId}`, { method: 'DELETE' });
 }

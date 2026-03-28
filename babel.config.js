@@ -1,12 +1,15 @@
+const envFile = process.env.APP_ENV === 'production' ? '.env.production' : '.env.local';
+
 module.exports = {
   presets: ['module:@react-native/babel-preset'],
   plugins: [
     [
       'module:react-native-dotenv',
       {
-        envName: 'APP_ENV',
         moduleName: '@env',
-        path: '.env',
+        path: envFile,
+        safe: false,
+        allowUndefined: true,
       },
     ],
   ],
