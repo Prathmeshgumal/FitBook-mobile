@@ -14,15 +14,15 @@ import ResetPasswordScreen from './screens/auth/ResetPasswordScreen';
 import OnboardingNavigator from './navigation/OnboardingNavigator';
 import MainTabNavigator from './navigation/MainTabNavigator';
 import { GymProvider, useGym } from './context/GymContext';
-import { TokenStore, rawPost } from './api/client';
+import { TokenStore, rawPost, BASE_URL } from './api/client';
 import type { AuthStackParamList } from './navigation/types';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,    // data fresh for 30s — no re-fetch on revisit
-      gcTime: 5 * 60_000,   // keep in memory 5 minutes
-      retry: 2,             // retry twice before showing error
+      staleTime: 30_000, // data fresh for 30s — no re-fetch on revisit
+      gcTime: 5 * 60_000, // keep in memory 5 minutes
+      retry: 2, // retry twice before showing error
     },
   },
 });
@@ -30,7 +30,9 @@ const queryClient = new QueryClient({
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
 const AuthNavigator = () => (
-  <AuthStack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+  <AuthStack.Navigator
+    screenOptions={{ headerShown: false, animation: 'fade' }}
+  >
     <AuthStack.Screen name="Login" component={LoginScreen} />
     <AuthStack.Screen name="Signup" component={SignupScreen} />
     <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
@@ -47,6 +49,9 @@ const AppRouter = () => {
 
   useEffect(() => {
     const bootstrap = async () => {
+      // Wake Vercel instance silently — fire and forget
+      fetch(BASE_URL.replace('/api/v1', '') + '/health').catch(() => {});
+
       let accessToken = await TokenStore.getAccess();
 
       // No access token — try to get one via the refresh token
@@ -57,10 +62,10 @@ const AppRouter = () => {
           return;
         }
         try {
-          const tokens = await rawPost<{ access_token: string; refresh_token: string }>(
-            '/auth/token/refresh',
-            { refresh_token: refreshToken },
-          );
+          const tokens = await rawPost<{
+            access_token: string;
+            refresh_token: string;
+          }>('/auth/token/refresh', { refresh_token: refreshToken });
           await TokenStore.save(tokens.access_token, tokens.refresh_token);
           accessToken = tokens.access_token;
         } catch {

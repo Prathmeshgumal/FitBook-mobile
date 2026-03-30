@@ -14,6 +14,8 @@ import {
   Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useGym } from '../../context/GymContext';
 import { listPlans, listBatches, type Plan, type Batch } from '../../api/gyms';
 import { createMember } from '../../api/members';
@@ -32,7 +34,8 @@ const AddMemberStep1Screen = ({ navigation }: AddMemberStep1ScreenProps) => {
   const [membershipId, setMembershipId] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
-  const [purchaseDate, setPurchaseDate] = useState(today());
+  const [purchaseDate, setPurchaseDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [paidAmount, setPaidAmount] = useState('');
   const [discount, setDiscount] = useState('');
   const [admissionFees, setAdmissionFees] = useState('');
@@ -47,16 +50,32 @@ const AddMemberStep1Screen = ({ navigation }: AddMemberStep1ScreenProps) => {
   const cardAnim = useRef(new Animated.Value(60)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  const queryClient = useQueryClient();
+
+  const createMemberMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof createMember>[1]) =>
+      createMember(gym!.id, payload),
+    onSuccess: newMember => {
+      queryClient.invalidateQueries({ queryKey: ['members', gym?.id] });
+      navigation.navigate('AddMemberStep2', { memberId: newMember.id });
+    },
+    onError: (err: any) => {
+      setError(err.message ?? 'Failed to add member.');
+      setLoading(false);
+    },
+  });
+
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(cardAnim, {
+      Animated.spring(cardAnim, {
         toValue: 0,
-        duration: 500,
+        damping: 18,
+        stiffness: 200,
         useNativeDriver: true,
       }),
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start();
@@ -91,27 +110,20 @@ const AddMemberStep1Screen = ({ navigation }: AddMemberStep1ScreenProps) => {
     if (!gym) return;
     setError('');
     setLoading(true);
-    try {
-      const member = await createMember(gym.id, {
-        full_name: fullName,
-        gender: gender || undefined,
-        phone,
-        membership_id: membershipId || undefined,
-        plan_id: selectedPlan.id,
-        batch_id: selectedBatch?.id,
-        purchase_date: purchaseDate,
-        paid_amount: paidAmount ? Number(paidAmount) : undefined,
-        payment_method: paymentMethod || undefined,
-        discount: discount ? Number(discount) : undefined,
-        admission_fees: admissionFees ? Number(admissionFees) : undefined,
-        comments: comments || undefined,
-      });
-      navigation.replace('AddMemberStep2', { memberId: member.id });
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to add member.');
-    } finally {
-      setLoading(false);
-    }
+    createMemberMutation.mutate({
+      full_name: fullName,
+      gender,
+      phone,
+      membership_id: membershipId || undefined,
+      plan_id: selectedPlan?.id,
+      batch_id: selectedBatch?.id,
+      purchase_date: purchaseDate.toISOString().split('T')[0],
+      paid_amount: paidAmount ? parseFloat(paidAmount) : undefined,
+      discount: discount ? parseFloat(discount) : undefined,
+      admission_fees: admissionFees ? parseFloat(admissionFees) : undefined,
+      comments: comments || undefined,
+      payment_method: paymentMethod || undefined,
+    });
   };
 
   const paymentMethods = gym?.payment_methods?.enabled
@@ -288,13 +300,34 @@ const AddMemberStep1Screen = ({ navigation }: AddMemberStep1ScreenProps) => {
               )}
             </View>
 
-            <Field
-              label="Payment Date *"
-              value={purchaseDate}
-              onChangeText={setPurchaseDate}
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-            />
+            <View style={styles.fieldWrap}>
+              <Text style={styles.label}>Payment Date *</Text>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                style={styles.dateField}
+              >
+                <Text style={styles.dateFieldText}>
+                  {purchaseDate.toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </Text>
+                <Ionicons name="calendar-outline" size={18} color="#8890A8" />
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={purchaseDate}
+                  mode="date"
+                  display="spinner"
+                  maximumDate={new Date()}
+                  onChange={(_, date) => {
+                    setShowDatePicker(false);
+                    if (date) setPurchaseDate(date);
+                  }}
+                />
+              )}
+            </View>
             <Field
               label="Paid Amount (₹)"
               value={paidAmount}
@@ -396,10 +429,6 @@ const Field = ({
   </View>
 );
 
-function today(): string {
-  return new Date().toISOString().split('T')[0];
-}
-
 export default AddMemberStep1Screen;
 
 const BG = '#0D1A2D';
@@ -498,5 +527,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 1.5,
+  },
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
+    paddingBottom: 10,
+  },
+  dateFieldText: {
+    fontSize: 15,
+    color: '#1A1A1A',
   },
 });

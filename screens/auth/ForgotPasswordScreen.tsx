@@ -25,14 +25,15 @@ const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(cardAnim, {
+      Animated.spring(cardAnim, {
         toValue: 0,
-        duration: 500,
+        damping: 18,
+        stiffness: 200,
         useNativeDriver: true,
       }),
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start();

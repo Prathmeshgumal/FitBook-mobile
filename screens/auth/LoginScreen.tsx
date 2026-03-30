@@ -25,20 +25,22 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [slowRequest, setSlowRequest] = useState(false);
 
   const cardAnim = useRef(new Animated.Value(60)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(cardAnim, {
+      Animated.spring(cardAnim, {
         toValue: 0,
-        duration: 500,
+        damping: 18,
+        stiffness: 200,
         useNativeDriver: true,
       }),
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start();
@@ -51,13 +53,19 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     }
     setError('');
     setLoading(true);
+    setSlowRequest(false);
+
+    const slowTimer = setTimeout(() => setSlowRequest(true), 2000);
+
     try {
       await login(email, password);
-      await refresh(); // GymContext.refresh() → App.tsx reroutes to onboarding or main
+      await refresh();
     } catch (err: any) {
       setError(err.message ?? 'Login failed. Please try again.');
     } finally {
+      clearTimeout(slowTimer);
       setLoading(false);
+      setSlowRequest(false);
     }
   };
 
@@ -140,6 +148,9 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
             </TouchableOpacity>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {slowRequest && !error ? (
+              <Text style={styles.slowText}>Connecting to server...</Text>
+            ) : null}
 
             <TouchableOpacity
               style={[styles.btn, loading && styles.btnDisabled]}
@@ -241,6 +252,13 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: '#E53935',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+
+  slowText: {
+    fontSize: 13,
+    color: '#8890A8',
     textAlign: 'center',
     marginBottom: 12,
   },

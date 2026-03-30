@@ -1,10 +1,3 @@
-/**
- * Base HTTP client with automatic JWT refresh.
- *
- * Install required packages:
- *   npm install @react-native-async-storage/async-storage
- *   npx pod-install   # iOS only
- */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@env';
 
@@ -37,9 +30,30 @@ export const TokenStore = {
   },
 };
 
+// ── Timeout wrapper ────────────────────────────────────────
+const TIMEOUT_MS = 15_000;
+
+async function withTimeout(
+  input: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out. Check your connection and try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // ── Raw fetch helpers ──────────────────────────────────────
 async function rawPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await withTimeout(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -61,7 +75,7 @@ export async function authFetch<T>(
     ...(options.headers ?? {}),
   };
 
-  let res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  let res = await withTimeout(`${BASE_URL}${path}`, { ...options, headers });
 
   // Access token expired — attempt silent refresh
   if (res.status === 401) {
@@ -76,7 +90,7 @@ export async function authFetch<T>(
       await TokenStore.save(tokens.access_token, tokens.refresh_token);
 
       // Retry with new access token
-      res = await fetch(`${BASE_URL}${path}`, {
+      res = await withTimeout(`${BASE_URL}${path}`, {
         ...options,
         headers: {
           ...headers,
@@ -94,4 +108,4 @@ export async function authFetch<T>(
   return envelope.data as T;
 }
 
-export { rawPost };
+export { rawPost, BASE_URL };

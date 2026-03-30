@@ -1,38 +1,65 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, StatusBar, Animated, ActivityIndicator, Platform,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  Animated,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { createBatch } from '../../api/gyms';
 import type { AddBatchesScreenProps } from '../../navigation/types';
 
 interface BatchForm {
   name: string;
-  start_time: string;
-  end_time: string;
+  start_time: Date | null;
+  end_time: Date | null;
 }
 
-const EMPTY_BATCH: BatchForm = { name: '', start_time: '', end_time: '' };
+const EMPTY_BATCH: BatchForm = { name: '', start_time: null, end_time: null };
 
 const AddBatchesScreen = ({ route, navigation }: AddBatchesScreenProps) => {
   const { gymId } = route.params;
   const [batches, setBatches] = useState<BatchForm[]>([{ ...EMPTY_BATCH }]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activePicker, setActivePicker] = useState<{
+    index: number;
+    field: 'start_time' | 'end_time';
+  } | null>(null);
 
   const cardAnim = useRef(new Animated.Value(60)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(cardAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(cardAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
-  const updateBatch = (index: number, field: keyof BatchForm, value: string) => {
-    setBatches(prev => prev.map((b, i) => i === index ? { ...b, [field]: value } : b));
+  const updateBatch = (
+    index: number,
+    field: keyof BatchForm,
+    value: string | Date | null,
+  ) => {
+    setBatches(prev =>
+      prev.map((b, i) => (i === index ? { ...b, [field]: value } : b)),
+    );
   };
 
   const addBatch = () => setBatches(prev => [...prev, { ...EMPTY_BATCH }]);
@@ -43,20 +70,23 @@ const AddBatchesScreen = ({ route, navigation }: AddBatchesScreenProps) => {
   };
 
   const handleNext = async () => {
-    const timeRegex = /^\d{2}:\d{2}$/;
-    const valid = batches.every(b => b.name && timeRegex.test(b.start_time) && timeRegex.test(b.end_time));
+    const valid = batches.every(b => b.name && b.start_time && b.end_time);
     if (!valid) {
-      setError('Please fill all batch fields. Times must be in HH:MM format (e.g. 06:00).');
+      setError('Please fill all batch fields including start and end times.');
       return;
     }
     setError('');
     setLoading(true);
     try {
-      await Promise.all(batches.map(b => createBatch(gymId, {
-        name: b.name,
-        start_time: b.start_time,
-        end_time: b.end_time,
-      })));
+      await Promise.all(
+        batches.map(b =>
+          createBatch(gymId, {
+            name: b.name,
+            start_time: formatTime(b.start_time!),
+            end_time: formatTime(b.end_time!),
+          }),
+        ),
+      );
       navigation.navigate('SetupComplete');
     } catch (err: any) {
       setError(err.message ?? 'Failed to save batches.');
@@ -70,7 +100,10 @@ const AddBatchesScreen = ({ route, navigation }: AddBatchesScreenProps) => {
       <StatusBar barStyle="light-content" backgroundColor={BG} />
 
       <Animated.View style={[styles.topSection, { opacity: fadeAnim }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+        >
           <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.stepLabel}>Step 3 of 3</Text>
@@ -78,7 +111,9 @@ const AddBatchesScreen = ({ route, navigation }: AddBatchesScreenProps) => {
         <Text style={styles.topSub}>Set up time slots for your members</Text>
       </Animated.View>
 
-      <Animated.View style={[styles.card, { transform: [{ translateY: cardAnim }] }]}>
+      <Animated.View
+        style={[styles.card, { transform: [{ translateY: cardAnim }] }]}
+      >
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -108,29 +143,49 @@ const AddBatchesScreen = ({ route, navigation }: AddBatchesScreenProps) => {
 
               <View style={styles.row}>
                 <View style={[styles.fieldWrap, styles.flex]}>
-                  <Text style={styles.label}>Start Time *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={batch.start_time}
-                    onChangeText={v => updateBatch(index, 'start_time', v)}
-                    placeholder="06:00"
-                    placeholderTextColor={PLACEHOLDER}
-                    keyboardType="numbers-and-punctuation"
-                    maxLength={5}
-                  />
+                  <Text style={styles.label}>Start Time</Text>
+                  <TouchableOpacity
+                    style={styles.timeField}
+                    onPress={() =>
+                      setActivePicker({ index, field: 'start_time' })
+                    }
+                  >
+                    <Text
+                      style={
+                        batch.start_time
+                          ? styles.timeFieldText
+                          : styles.timeFieldPlaceholder
+                      }
+                    >
+                      {batch.start_time
+                        ? formatTime(batch.start_time)
+                        : 'e.g. 06:00'}
+                    </Text>
+                    <Ionicons name="time-outline" size={18} color="#8890A8" />
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.rowSpacer} />
                 <View style={[styles.fieldWrap, styles.flex]}>
-                  <Text style={styles.label}>End Time *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={batch.end_time}
-                    onChangeText={v => updateBatch(index, 'end_time', v)}
-                    placeholder="08:00"
-                    placeholderTextColor={PLACEHOLDER}
-                    keyboardType="numbers-and-punctuation"
-                    maxLength={5}
-                  />
+                  <Text style={styles.label}>End Time</Text>
+                  <TouchableOpacity
+                    style={styles.timeField}
+                    onPress={() =>
+                      setActivePicker({ index, field: 'end_time' })
+                    }
+                  >
+                    <Text
+                      style={
+                        batch.end_time
+                          ? styles.timeFieldText
+                          : styles.timeFieldPlaceholder
+                      }
+                    >
+                      {batch.end_time
+                        ? formatTime(batch.end_time)
+                        : 'e.g. 07:00'}
+                    </Text>
+                    <Ionicons name="time-outline" size={18} color="#8890A8" />
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
@@ -149,13 +204,36 @@ const AddBatchesScreen = ({ route, navigation }: AddBatchesScreenProps) => {
             activeOpacity={0.85}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.btnText}>FINISH SETUP</Text>}
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.btnText}>FINISH SETUP</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>
+
+      {activePicker && (
+        <DateTimePicker
+          value={batches[activePicker.index][activePicker.field] ?? new Date()}
+          mode="time"
+          display="spinner"
+          is24Hour={true}
+          onChange={(_, date) => {
+            if (date) updateBatch(activePicker.index, activePicker.field, date);
+            setActivePicker(null);
+          }}
+        />
+      )}
     </View>
   );
 };
+
+function formatTime(date: Date): string {
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
 
 export default AddBatchesScreen;
 
@@ -170,21 +248,95 @@ const styles = StyleSheet.create({
   rowSpacer: { width: 16 },
   backBtn: { marginBottom: 12 },
   topSection: { paddingTop: 56, paddingHorizontal: 32, paddingBottom: 32 },
-  stepLabel: { fontSize: 12, color: '#8890A8', fontWeight: '600', letterSpacing: 1, marginBottom: 6 },
-  topTitle: { fontSize: 32, fontWeight: '800', color: '#FFFFFF', lineHeight: 38 },
+  stepLabel: {
+    fontSize: 12,
+    color: '#8890A8',
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  topTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 38,
+  },
   topSub: { fontSize: 14, color: '#8890A8', marginTop: 6 },
-  card: { flex: 1, backgroundColor: '#FFFFFF', borderTopLeftRadius: 30, borderTopRightRadius: 30 },
+  card: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
   cardScroll: { paddingHorizontal: 32, paddingTop: 36, paddingBottom: 24 },
-  batchCard: { backgroundColor: '#F8F9FC', borderRadius: 12, padding: 16, marginBottom: 16 },
-  batchCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  batchCard: {
+    backgroundColor: '#F8F9FC',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  batchCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   batchCardTitle: { fontSize: 14, fontWeight: '700', color: BG },
   fieldWrap: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: '#1A1A1A', marginBottom: 8 },
-  input: { fontSize: 15, color: '#1A1A1A', borderBottomWidth: 1, borderBottomColor: DIVIDER, paddingBottom: 10, padding: 0 },
-  addMoreBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', paddingVertical: 12, marginBottom: 16 },
+  input: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    borderBottomWidth: 1,
+    borderBottomColor: DIVIDER,
+    paddingBottom: 10,
+    padding: 0,
+  },
+  addMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
   addMoreText: { fontSize: 14, color: BG, fontWeight: '600' },
-  errorText: { fontSize: 13, color: '#E53935', textAlign: 'center', marginBottom: 12 },
-  btn: { backgroundColor: BG, borderRadius: 30, height: 54, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  errorText: {
+    fontSize: 13,
+    color: '#E53935',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  btn: {
+    backgroundColor: BG,
+    borderRadius: 30,
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', letterSpacing: 1.5 },
+  btnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  timeField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: DIVIDER,
+    paddingBottom: 10,
+    paddingTop: 4,
+  },
+  timeFieldText: {
+    fontSize: 15,
+    color: '#1A1A1A',
+  },
+  timeFieldPlaceholder: {
+    fontSize: 15,
+    color: '#C0C0C0',
+  },
 });
